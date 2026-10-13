@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direktori & Manajemen Karyawan</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-600 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-500 rounded-lg shadow-inner">
+                    <i data-lucide="users" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">Direktori Karyawan</h1>
+                    <p class="text-xs text-indigo-200">Sistem Informasi Kontrak & Monitoring KPI</p>
+                </div>
+            </div>
+            
+            <!-- Actions Header -->
+            <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
+                <button id="btn-add-modal" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition shadow-md hover:shadow-lg">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    <span>Tambah Karyawan</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Metrics Overview -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Total Karyawan</p>
+                    <h3 id="stat-total" class="text-2xl font-bold text-slate-800">0</h3>
+                </div>
+                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <i data-lucide="users" class="w-6 h-6"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Kontrak Aman</p>
+                    <h3 id="stat-safe" class="text-2xl font-bold text-emerald-600">0</h3>
+                </div>
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Segera Habis (&lt;30 Hari)</p>
+                    <h3 id="stat-warning" class="text-2xl font-bold text-amber-600">0</h3>
+                </div>
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Kontrak Habis/Minus</p>
+                    <h3 id="stat-expired" class="text-2xl font-bold text-rose-600">0</h3>
+                </div>
+                <div class="p-3 bg-rose-50 text-rose-600 rounded-lg">
+                    <i data-lucide="alert-circle" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Bar: Search & View Toggle -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="relative w-full md:w-96">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="input-search" placeholder="Cari nama atau tempat tinggal..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
+                <select id="select-filter" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                    <option value="all">Semua Status Kontrak</option>
+                    <option value="safe">Kontrak Aman (>30 Hari)</option>
+                    <option value="warning">Segera Habis (1 - 30 Hari)</option>
+                    <option value="expired">Kontrak Habis (&le;0 Hari)</option>
+                </select>
+
+                <div class="flex items-center border border-slate-200 rounded-lg p-1 bg-slate-100">
+                    <button id="view-grid" class="p-1.5 rounded-md bg-white shadow-sm text-indigo-600 font-medium transition" title="Grid View">
+                        <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                    </button>
+                    <button id="view-table" class="p-1.5 rounded-md text-slate-500 hover:text-slate-800 transition" title="Table View">
+                        <i data-lucide="table" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Directory Grid View -->
+        <div id="container-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <!-- Directory Table View -->
+        <div id="container-table" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-semibold border-b border-slate-200">
+                        <tr>
+                            <th class="py-3 px-4">Karyawan</th>
+                            <th class="py-3 px-4">Tgl Lahir / Umur</th>
+                            <th class="py-3 px-4">Domisili</th>
+                            <th class="py-3 px-4">Awal Kontrak</th>
+                            <th class="py-3 px-4">Akhir Kontrak</th>
+                            <th class="py-3 px-4">Sisa Kontrak</th>
+                            <th class="py-3 px-4">KPI</th>
+                            <th class="py-3 px-4 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden text-center py-12 bg-white rounded-xl border border-slate-200">
+            <i data-lucide="user-x" class="w-12 h-12 mx-auto text-slate-300 mb-3"></i>
+            <h4 class="text-base font-semibold text-slate-700">Data Tidak Ditemukan</h4>
+            <p class="text-xs text-slate-400 mt-1">Coba kata kunci atau filter pencarian yang berbeda.</p>
+        </div>
+
+    </main>
+
+    <!-- Modal Form (Add / Edit Karyawan) -->
+    <div id="modal-form" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden transform scale-95 transition-transform duration-200 max-h-[90vh] flex flex-col">
+            <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+                <h3 id="modal-title" class="text-lg font-bold text-slate-800">Tambah Karyawan</h3>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="employee-form" class="p-6 space-y-4 overflow-y-auto">
+                <input type="hidden" id="form-id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Foto Profil</label>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative w-16 h-16 rounded-full overflow-hidden border-2 border-indigo-500 bg-slate-100 flex-shrink-0">
+                            <img id="form-photo-preview" src="" alt="Preview" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1 space-y-2">
+                            <label class="cursor-pointer inline-flex items-center px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm">
+                                <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5 text-indigo-600"></i>
+                                Upload Foto Baru
+                                <input type="file" id="form-photo-file" accept="image/*" class="hidden">
+                            </label>
+                            <p class="text-[10px] text-slate-400">Pilih foto dari komputer kamu (opsional).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap *</label>
+                    <input type="text" id="form-nama" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Lahir *</label>
+                        <input type="date" id="form-tgl-lahir" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nilai KPI (0-100)</label>
+                        <input type="number" id="form-kpi" min="0" max="100" value="80" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tempat Tinggal / Domisili</label>
+                    <input type="text" id="form-tempat-tinggal" placeholder="misal: Jakarta Selatan" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Awal Kontrak *</label>
+                        <input type="date" id="form-awal-kontrak" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Akhir Kontrak *</label>
+                        <input type="date" id="form-akhir-kontrak" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 flex justify-end space-x-3">
+                    <button type="button" id="btn-cancel-modal" class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition shadow-md">
+                        Simpan Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Detail Karyawan -->
+    <div id="modal-detail" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden transform scale-95 transition-transform duration-200">
+            <div id="detail-card-content"></div>
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end">
+                <button id="btn-close-detail" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-semibold transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Application -->
+    <script>
+        const initialEmployees = [
+            { id: 1, nama: "MUHAMMAD EFFENDI", tglLahir: "1993-09-09", tempatTinggal: "Jakarta", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 85, foto: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250" },
+            { id: 2, nama: "EDWARD JANPUTRA K...", tglLahir: "1991-01-02", tempatTinggal: "Jakarta Selatan", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 80, foto: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250" },
+            { id: 3, nama: "RISKE DWI HISMA RANTI", tglLahir: "1998-03-31", tempatTinggal: "Jakarta", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 88, foto: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=250" },
+            { id: 4, nama: "MUHAMAD KHOLID SH...", tglLahir: "2000-06-29", tempatTinggal: "Jakarta", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 82, foto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250" },
+            { id: 5, nama: "MATHEUS MOGOT", tglLahir: "1990-11-07", tempatTinggal: "Tangerang", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 79, foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=250" },
+            { id: 6, nama: "MISBAHUL KARIM", tglLahir: "1991-07-02", tempatTinggal: "Depok", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 84, foto: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=250" },
+            { id: 7, nama: "FAISAL SULAEMAN", tglLahir: "2003-07-31", tempatTinggal: "Bogor", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 86, foto: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=250" },
+            { id: 8, nama: "NENGAH ADITIA WARD...", tglLahir: "2000-12-02", tempatTinggal: "Bekasi", awalKontrak: "2026-06-18", akhirKontrak: "2026-12-31", kpi: 81, foto: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=250" },
+            { id: 9, nama: "MUHAMMAD IKHSAN H...", tglLahir: "2001-07-04", tempatTinggal: "Jakarta", awalKontrak: "2026-04-06", akhirKontrak: "2026-12-31", kpi: 83, foto: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=250" },
+            { id: 10, nama: "I KETUT GUMBYAR", tglLahir: "2002-02-27", tempatTinggal: "Jakarta", awalKontrak: "2026-01-26", akhirKontrak: "2026-09-30", kpi: 75, foto: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250" },
+            { id: 11, nama: "ADAM YOGI SAPUTRA", tglLahir: "1996-10-30", tempatTinggal: "Tangerang", awalKontrak: "2026-05-01", akhirKontrak: "2026-12-31", kpi: 87, foto: "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&q=80&w=250" },
+            { id: 12, nama: "TEGAR SAPUTRA", tglLahir: "2002-06-23", tempatTinggal: "Bekasi", awalKontrak: "2026-01-26", akhirKontrak: "2026-12-31", kpi: 90, foto: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=250" },
+            { id: 13, nama: "TABAH PUTRA WARDA...", tglLahir: "2000-02-23", tempatTinggal: "Depok", awalKontrak: "2026-01-26", akhirKontrak: "2026-12-31", kpi: 83, foto: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&q=80&w=250" },
+            { id: 14, nama: "MUHAMMAD HAIKHAL ...", tglLahir: "2005-09-26", tempatTinggal: "Jakarta", awalKontrak: "2026-01-26", akhirKontrak: "2026-10-10", kpi: 78, foto: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=250" },
+            { id: 15, nama: "EDO AGUSTIAN WIBO...", tglLahir: "2002-09-15", tempatTinggal: "Jakarta Timur", awalKontrak: "2026-01-26", akhirKontrak: "2026-09-30", kpi: 76, foto: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=250" },
+            { id: 16, nama: "KHAIRUZAKY PRATAMA", tglLahir: "2000-05-04", tempatTinggal: "Bogor", awalKontrak: "2026-06-27", akhirKontrak: "2026-12-31", kpi: 89, foto: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250" },
+            { id: 17, nama: "FIRAS MOGA SYAHID F", tglLahir: "1993-11-26", tempatTinggal: "Jakarta Utara", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 85, foto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250" },
+            { id: 18, nama: "NANA NUR APRIAN", tglLahir: "1992-04-25", tempatTinggal: "Cibinong", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 89, foto: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250" },
+            { id: 19, nama: "ANDRIANTO RAMADHAN", tglLahir: "1996-02-20", tempatTinggal: "Jakarta Pusat", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 84, foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=250" },
+            { id: 20, nama: "DENISA MEDIRA", tglLahir: "2000-03-10", tempatTinggal: "Jakarta Selatan", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 91, foto: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=250" },
+            { id: 21, nama: "ASIS SISWANTO", tglLahir: "1989-10-10", tempatTinggal: "Jakarta", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 85, foto: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=250" },
+            { id: 22, nama: "SEPTIAN ADE PUTRA", tglLahir: "1990-09-25", tempatTinggal: "Jakarta", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 82, foto: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=250" }
+        ];
+
+        let employees = JSON.parse(localStorage.getItem("employees_db")) || initialEmployees;
+        let currentView = 'grid';
+        let tempPhotoData = '';
+
+        // DOM Elements
+        const gridContainer = document.getElementById('container-grid');
+        const tableContainer = document.getElementById('container-table');
+        const tableBody = document.getElementById('table-body');
+        const emptyState = document.getElementById('empty-state');
+        const searchInput = document.getElementById('input-search');
+        const filterSelect = document.getElementById('select-filter');
+
+        const modalForm = document.getElementById('modal-form');
+        const modalTitle = document.getElementById('modal-title');
+        const employeeForm = document.getElementById('employee-form');
+        const formPhotoPreview = document.getElementById('form-photo-preview');
+        const formPhotoFile = document.getElementById('form-photo-file');
+
+        const modalDetail = document.getElementById('modal-detail');
+        const detailCardContent = document.getElementById('detail-card-content');
+
+        // Helpers
+        function calculateDaysRemaining(endDateStr) {
+            const endDate = new Date(endDateStr);
+            const refDate = new Date('2026-10-12');
+            return Math.ceil((endDate - refDate) / (1000 * 60 * 60 * 24));
+        }
+
+        function calculateAge(birthDateStr) {
+            const birthDate = new Date(birthDateStr);
+            const refDate = new Date('2026-10-12');
+            let age = refDate.getFullYear() - birthDate.getFullYear();
+            const m = refDate.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && refDate.getDate() < birthDate.getDate())) age--;
+            return age;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function saveToStorage() {
+            localStorage.setItem("employees_db", JSON.stringify(employees));
+            render();
+        }
+
+        function showModal(modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.children[0].classList.remove('scale-95');
+            }, 10);
+        }
+
+        function hideModal(modal) {
+            modal.classList.add('opacity-0');
+            modal.children[0].classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        // Render functions
+        function render() {
+            const query = searchInput.value.toLowerCase();
+            const filterVal = filterSelect.value;
+
+            const filtered = employees.filter(emp => {
+                const daysLeft = calculateDaysRemaining(emp.akhirKontrak);
+                const matchesSearch = emp.nama.toLowerCase().includes(query) || (emp.tempatTinggal && emp.tempatTinggal.toLowerCase().includes(query));
+                let matchesFilter = true;
+                if (filterVal === 'safe') matchesFilter = daysLeft > 30;
+                else if (filterVal === 'warning') matchesFilter = daysLeft > 0 && daysLeft <= 30;
+                else if (filterVal === 'expired') matchesFilter = daysLeft <= 0;
+
+                return matchesSearch && matchesFilter;
+            });
+
+            document.getElementById('stat-total').textContent = employees.length;
+            document.getElementById('stat-safe').textContent = employees.filter(e => calculateDaysRemaining(e.akhirKontrak) > 30).length;
+            document.getElementById('stat-warning').textContent = employees.filter(e => { const d = calculateDaysRemaining(e.akhirKontrak); return d > 0 && d <= 30; }).length;
+            document.getElementById('stat-expired').textContent = employees.filter(e => calculateDaysRemaining(e.akhirKontrak) <= 0).length;
+
+            if (filtered.length === 0) {
+                gridContainer.classList.add('hidden');
+                tableContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            if (currentView === 'grid') {
+                gridContainer.classList.remove('hidden');
+                tableContainer.classList.add('hidden');
+                renderGrid(filtered);
+            } else {
+                gridContainer.classList.add('hidden');
+                tableContainer.classList.remove('hidden');
+                renderTable(filtered);
+            }
+
+            lucide.createIcons();
+        }
+
+        function renderGrid(list) {
+            gridContainer.innerHTML = list.map(emp => {
+                const days = calculateDaysRemaining(emp.akhirKontrak);
+                let statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
+                if (days <= 0) statusBadge = `<span class="bg-rose-100 text-rose-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
+                else if (days <= 30) statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
+
+                return `
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition p-5 relative flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center space-x-3">
+                                <img src="${emp.foto}" alt="${emp.nama}" class="w-12 h-12 rounded-full object-cover border-2 border-indigo-100">
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-sm leading-snug hover:text-indigo-600 transition cursor-pointer" onclick="openDetail(${emp.id})">${emp.nama}</h3>
+                                    <p class="text-xs text-slate-500">${emp.tempatTinggal || 'Indonesia'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-slate-400 block text-[10px]">TANGGAL LAHIR</span>
+                                <span class="font-medium text-slate-700">${formatDate(emp.tglLahir)}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px]">SISA KONTRAK</span>
+                                ${statusBadge}
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px]">AWAL KONTRAK</span>
+                                <span class="font-medium text-slate-700">${formatDate(emp.awalKontrak)}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px]">AKHIR KONTRAK</span>
+                                <span class="font-medium text-slate-700">${formatDate(emp.akhirKontrak)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-1 text-xs text-indigo-600 font-semibold">
+                            <i data-lucide="award" class="w-4 h-4"></i>
+                            <span>KPI: ${emp.kpi}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="openEdit(${emp.id})" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition" title="Edit">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteEmployee(${emp.id})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition" title="Hapus">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderTable(list) {
+            tableBody.innerHTML = list.map(emp => {
+                const days = calculateDaysRemaining(emp.akhirKontrak);
+                let statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
+                if (days <= 0) statusBadge = `<span class="bg-rose-100 text-rose-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
+                else if (days <= 30) statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
+
+                return `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-3 px-4 flex items-center space-x-3">
+                        <img src="${emp.foto}" alt="${emp.nama}" class="w-8 h-8 rounded-full object-cover">
+                        <span class="font-medium text-slate-800 hover:text-indigo-600 cursor-pointer" onclick="openDetail(${emp.id})">${emp.nama}</span>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-slate-600">${formatDate(emp.tglLahir)} (${calculateAge(emp.tglLahir)} th)</td>
+                    <td class="py-3 px-4 text-xs text-slate-600">${emp.tempatTinggal || '-'}</td>
+                    <td class="py-3 px-4 text-xs text-slate-600">${formatDate(emp.awalKontrak)}</td>
+                    <td class="py-3 px-4 text-xs text-slate-600">${formatDate(emp.akhirKontrak)}</td>
+                    <td class="py-3 px-4 text-xs">${statusBadge}</td>
+                    <td class="py-3 px-4 text-xs font-semibold text-indigo-600">${emp.kpi}</td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                            <button onclick="openEdit(${emp.id})" class="text-slate-400 hover:text-indigo-600 p-1"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                            <button onclick="deleteEmployee(${emp.id})" class="text-slate-400 hover:text-rose-600 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        // Image Handling
+        formPhotoFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    tempPhotoData = evt.target.result;
+                    formPhotoPreview.src = tempPhotoData;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form Submission
+        employeeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('form-id').value;
+            const nama = document.getElementById('form-nama').value;
+            const tglLahir = document.getElementById('form-tgl-lahir').value;
+            const tempatTinggal = document.getElementById('form-tempat-tinggal').value;
+            const awalKontrak = document.getElementById('form-awal-kontrak').value;
+            const akhirKontrak = document.getElementById('form-akhir-kontrak').value;
+            const kpi = parseInt(document.getElementById('form-kpi').value) || 0;
+
+            if (id) {
+                const index = employees.findIndex(emp => emp.id == id);
+                if (index !== -1) {
+                    employees[index] = {
+                        ...employees[index],
+                        nama,
+                        tglLahir,
+                        tempatTinggal,
+                        awalKontrak,
+                        akhirKontrak,
+                        kpi,
+                        foto: tempPhotoData || employees[index].foto
+                    };
+                }
+            } else {
+                const newEmployee = {
+                    id: Date.now(),
+                    nama,
+                    tglLahir,
+                    tempatTinggal,
+                    awalKontrak,
+                    akhirKontrak,
+                    kpi,
+                    foto: tempPhotoData || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250"
+                };
+                employees.push(newEmployee);
+            }
+
+            saveToStorage();
+            hideModal(modalForm);
+        });
+
+        // Actions
+        function openEdit(id) {
+            const emp = employees.find(e => e.id === id);
+            if (!emp) return;
+
+            modalTitle.textContent = "Edit Data Karyawan";
+            document.getElementById('form-id').value = emp.id;
+            document.getElementById('form-nama').value = emp.nama;
+            document.getElementById('form-tgl-lahir').value = emp.tglLahir;
+            document.getElementById('form-tempat-tinggal').value = emp.tempatTinggal;
+            document.getElementById('form-awal-kontrak').value = emp.awalKontrak;
+            document.getElementById('form-akhir-kontrak').value = emp.akhirKontrak;
+            document.getElementById('form-kpi').value = emp.kpi;
+
+            tempPhotoData = emp.foto;
+            formPhotoPreview.src = emp.foto;
+
+            showModal(modalForm);
+        }
+
+        function deleteEmployee(id) {
+            if (confirm("Apakah Anda yakin ingin menghapus data karyawan ini?")) {
+                employees = employees.filter(e => e.id !== id);
+                saveToStorage();
+            }
+        }
+
+        function openDetail(id) {
+            const emp = employees.find(e => e.id === id);
+            if (!emp) return;
+
+            const days = calculateDaysRemaining(emp.akhirKontrak);
+            detailCardContent.innerHTML = `
+                <div class="p-6 text-center border-b border-slate-100 bg-slate-50">
+                    <img src="${emp.foto}" class="w-20 h-20 rounded-full mx-auto object-cover border-4 border-white shadow-md mb-3">
+                    <h3 class="text-lg font-bold text-slate-800">${emp.nama}</h3>
+                    <p class="text-xs text-slate-500">${emp.tempatTinggal || 'Indonesia'}</p>
+                </div>
+                <div class="p-6 space-y-3 text-sm">
+                    <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Usia</span><span class="font-medium">${calculateAge(emp.tglLahir)} Tahun</span></div>
+                    <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Tanggal Lahir</span><span class="font-medium">${formatDate(emp.tglLahir)}</span></div>
+                    <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Periode Kontrak</span><span class="font-medium">${formatDate(emp.awalKontrak)} - ${formatDate(emp.akhirKontrak)}</span></div>
+                    <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Sisa Kontrak</span><span class="font-bold text-indigo-600">${days} Hari</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Nilai KPI</span><span class="font-bold text-emerald-600">${emp.kpi} / 100</span></div>
+                </div>
+            `;
+            showModal(modalDetail);
+        }
+
+        // View Modals & Listeners
+        document.getElementById('btn-add-modal').addEventListener('click', () => {
+            modalTitle.textContent = "Tambah Karyawan Baru";
+            employeeForm.reset();
+            document.getElementById('form-id').value = '';
+            tempPhotoData = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250";
+            formPhotoPreview.src = tempPhotoData;
+            showModal(modalForm);
+        });
+
+        document.getElementById('btn-close-modal').addEventListener('click', () => hideModal(modalForm));
+        document.getElementById('btn-cancel-modal').addEventListener('click', () => hideModal(modalForm));
+        document.getElementById('btn-close-detail').addEventListener('click', () => hideModal(modalDetail));
+
+        // Switch View & Filter
+        document.getElementById('view-grid').addEventListener('click', (e) => {
+            currentView = 'grid';
+            e.currentTarget.classList.add('bg-white', 'shadow-sm', 'text-indigo-600');
+            document.getElementById('view-table').classList.remove('bg-white', 'shadow-sm', 'text-indigo-600');
+            render();
+        });
+
+        document.getElementById('view-table').addEventListener('click', (e) => {
+            currentView = 'table';
+            e.currentTarget.classList.add('bg-white', 'shadow-sm', 'text-indigo-600');
+            document.getElementById('view-grid').classList.remove('bg-white', 'shadow-sm', 'text-indigo-600');
+            render();
+        });
+
+        searchInput.addEventListener('input', render);
+        filterSelect.addEventListener('change', render);
+
+        // Initial Exec
+        render();
+    </script>
+</body>
+</html>

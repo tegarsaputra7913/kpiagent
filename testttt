@@ -1,0 +1,35 @@
+#include <stdio.h>
+
+int main() {
+  
+    double harga;       
+    int jumlah;         
+    float diskon;      
+    double uang_bayar;  
+    double subtotal;
+    double nominal_diskon;
+    double total_akhir;
+    double kembalian;
+
+    
+    printf("==================================================\n");
+    printf("        SISTEM KASIR TOKO UTAMA - UAI             \n");
+    printf("==================================================\n\n");
+    printf("Masukkan Harga per Unit (Rp) : ");
+    scanf("%lf", &harga);
+    printf("Masukkan Jumlah Beli (Unit)  : ");
+    scanf("%d", &jumlah);
+    printf("Masukkan Diskon (%%)          : ");
+    scanf("%f", &diskon);
+    printf("--------------------------------------------------\n\n");
+    printf("Subtotal                     : Rp %10.2f\n", subtotal);
+    printf("Nominal Diskon (%.1f%%)       : Rp %10.2f\n", diskon, nominal_diskon);
+    printf("TOTAL HARGA AKHIR            : Rp %10.2f\n", total_akhir);
+    printf("--------------------------------------------------\n\n");
+    printf("Masukkan Nominal Uang Bayar  : Rp ");
+    scanf("%lf", &uang_bayar);
+    printf("Uang Kembalian               : Rp %10.2f\n", kembalian);
+    printf("==================================================\n");
+
+    return 0;
+}
