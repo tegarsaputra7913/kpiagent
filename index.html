@@ -1,629 +1,982 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Direktori & Manajemen Karyawan</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons CDN -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoring Status OLT Down Stasiun</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Flatpickr Date Picker CSS (Dark Theme) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+
+  <!-- Chart.js & Datalabels Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <style>
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+    body { background-color: #0b1329; color: #f8fafc; padding: 24px; min-height: 100vh; }
+    .container { max-width: 1800px; margin: 0 auto; }
+    
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .title-group h1 { font-size: 24px; font-weight: 700; color: #ffffff; }
+    .title-group p { font-size: 14px; color: #94a3b8; margin-top: 4px; }
+    
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .status-badge { background: #182238; border: 1px solid #2e3d5c; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; background-color: #22c55e; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.9); } }
+
+    .btn-add { background: #38bdf8; color: #0b1329; border: none; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+    .btn-add:hover { background: #0284c7; color: #ffffff; }
+
+    /* Panel Filter Grid */
+    .filter-card { background: #182238; border: 1px solid #2e3d5c; border-radius: 12px; padding: 20px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-group label { font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-control { background: #0b1329; border: 1px solid #2e3d5c; color: #f8fafc; padding: 10px 14px; border-radius: 8px; font-size: 13px; outline: none; transition: border-color 0.2s; cursor: pointer; }
+    .filter-control:focus { border-color: #38bdf8; }
+    
+    .btn-reset { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; height: 40px; }
+    .btn-reset:hover { background: rgba(239, 68, 68, 0.3); }
+
+    .active-filter-badge { background: rgba(56, 189, 248, 0.2); border: 1px dashed #38bdf8; color: #38bdf8; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; margin-bottom: 16px; display: none; align-items: center; justify-content: space-between; }
+
+    .dashboard-panel { display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px; }
+    .chart-card { background: #182238; border: 1px solid #2e3d5c; border-radius: 12px; padding: 20px; position: relative; }
+    .chart-title { font-size: 13px; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+    .bottom-grid { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 20px; }
+    @media (max-width: 1200px) { .bottom-grid { grid-template-columns: 1fr; } }
+
+    .counter-box { position: absolute; top: 16px; right: 20px; background: #eab308; color: #0b1329; border-radius: 8px; padding: 6px 16px; text-align: center; }
+    .counter-box .num { font-size: 20px; font-weight: 800; }
+    .counter-box .lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; }
+
+    .pie-box { height: 260px; position: relative; }
+
+    /* Matriks SLA Table */
+    .sla-table-container { margin-top: 16px; overflow-x: auto; }
+    .sla-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .sla-table th { background: #0f172a; color: #38bdf8; padding: 10px; border: 1px solid #2e3d5c; text-align: center; font-weight: 700; }
+    .sla-table td { padding: 10px; border: 1px solid #2e3d5c; text-align: center; color: #f8fafc; }
+    .sla-table tr:hover { background: #1f2d4a; }
+    .highlight-cell { background: rgba(56, 189, 248, 0.1); font-weight: bold; color: #38bdf8; }
+
+    /* Table Main */
+    .table-container { background: #182238; border: 1px solid #2e3d5c; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4); }
+    .table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+    th { background-color: #0f172a; color: #94a3b8; font-weight: 600; padding: 16px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 1px solid #2e3d5c; white-space: nowrap; }
+    td { padding: 14px 16px; border-bottom: 1px solid #2e3d5c; color: #cbd5e1; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: #1f2d4a; }
+
+    .stasiun-tag { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 700; padding: 4px 10px; border-radius: 6px; display: inline-block; white-space: nowrap; }
+    .brand-tag { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+    .duration-tag { background: rgba(251, 146, 60, 0.15); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.3); padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+
+    .badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-block; text-align: center; }
+    .badge-down { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-progress { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-resolved { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+
+    .last-update { font-size: 12px; color: #64748b; text-align: right; margin-top: 16px; }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-card { background: #182238; border: 1px solid #2e3d5c; border-radius: 12px; width: 100%; max-width: 650px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #2e3d5c; padding-bottom: 12px; }
+    .modal-header h2 { font-size: 18px; color: #ffffff; }
+    .close-modal { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .form-group-full { grid-column: span 2; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 4px; }
+    .form-control { width: 100%; background: #0b1329; border: 1px solid #2e3d5c; color: #f8fafc; padding: 10px; border-radius: 6px; font-size: 13px; outline: none; }
+    .form-control:focus { border-color: #38bdf8; }
+
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .btn-cancel { background: #334155; color: #f8fafc; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; }
+    .btn-submit { background: #38bdf8; color: #0b1329; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .flatpickr-calendar { background: #182238 !important; border: 1px solid #2e3d5c !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important; }
+    .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: #38bdf8 !important; border-color: #38bdf8 !important; color: #0b1329 !important; font-weight: bold; }
+    .flatpickr-day.inRange { background: rgba(56, 189, 248, 0.2) !important; box-shadow: -5px 0 0 rgba(56, 189, 248, 0.2), 5px 0 0 rgba(56, 189, 248, 0.2) !important; }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen">
+<body>
 
-    <!-- Header / Navbar -->
-    <header class="bg-indigo-600 text-white shadow-lg sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center space-x-3">
-                <div class="p-2 bg-indigo-500 rounded-lg shadow-inner">
-                    <i data-lucide="users" class="w-6 h-6 text-white"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-wide">Direktori Karyawan</h1>
-                    <p class="text-xs text-indigo-200">Sistem Informasi Kontrak & Monitoring KPI</p>
-                </div>
-            </div>
-            
-            <!-- Actions Header -->
-            <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
-                <button id="btn-add-modal" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition shadow-md hover:shadow-lg">
-                    <i data-lucide="user-plus" class="w-4 h-4"></i>
-                    <span>Tambah Karyawan</span>
-                </button>
-            </div>
+  <div class="container">
+    <div class="header">
+      <div class="title-group">
+        <h1>Monitoring Status OLT Down</h1>
+        <p>Sistem Pemantauan Gangguan OLT Stasiun Real-Time</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-add" onclick="bukaModal()">+ Tambah Data OLT</button>
+        <div class="status-badge">
+          <span class="dot"></span>
+          <span id="sync-status">Live Sync (10s)</span>
         </div>
-    </header>
-
-    <!-- Main Content Container -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        <!-- Metrics Overview -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-500 font-medium">Total Karyawan</p>
-                    <h3 id="stat-total" class="text-2xl font-bold text-slate-800">0</h3>
-                </div>
-                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-                    <i data-lucide="users" class="w-6 h-6"></i>
-                </div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-500 font-medium">Kontrak Aman</p>
-                    <h3 id="stat-safe" class="text-2xl font-bold text-emerald-600">0</h3>
-                </div>
-                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
-                    <i data-lucide="shield-check" class="w-6 h-6"></i>
-                </div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-500 font-medium">Segera Habis (&lt;30 Hari)</p>
-                    <h3 id="stat-warning" class="text-2xl font-bold text-amber-600">0</h3>
-                </div>
-                <div class="p-3 bg-amber-50 text-amber-600 rounded-lg">
-                    <i data-lucide="clock" class="w-6 h-6"></i>
-                </div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-500 font-medium">Kontrak Habis/Minus</p>
-                    <h3 id="stat-expired" class="text-2xl font-bold text-rose-600">0</h3>
-                </div>
-                <div class="p-3 bg-rose-50 text-rose-600 rounded-lg">
-                    <i data-lucide="alert-circle" class="w-6 h-6"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Controls Bar: Search & View Toggle -->
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            
-            <!-- Search Bar -->
-            <div class="relative w-full md:w-96">
-                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="input-search" placeholder="Cari nama atau tempat tinggal..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            </div>
-
-            <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
-                <!-- Filter Status -->
-                <select id="select-filter" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                    <option value="all">Semua Status Kontrak</option>
-                    <option value="safe">Kontrak Aman (>30 Hari)</option>
-                    <option value="warning">Segera Habis (1 - 30 Hari)</option>
-                    <option value="expired">Kontrak Habis (&le;0 Hari)</option>
-                </select>
-
-                <!-- View Switcher Toggle -->
-                <div class="flex items-center border border-slate-200 rounded-lg p-1 bg-slate-100">
-                    <button id="view-grid" class="p-1.5 rounded-md bg-white shadow-sm text-indigo-600 font-medium transition" title="Grid View">
-                        <i data-lucide="layout-grid" class="w-4 h-4"></i>
-                    </button>
-                    <button id="view-table" class="p-1.5 rounded-md text-slate-500 hover:text-slate-800 transition" title="Table View">
-                        <i data-lucide="table" class="w-4 h-4"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Directory Grid View -->
-        <div id="container-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Dynamic Content Generated via JS -->
-        </div>
-
-        <!-- Directory Table View (Hidden by Default) -->
-        <div id="container-table" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-semibold border-b border-slate-200">
-                        <tr>
-                            <th class="py-3 px-4">Karyawan</th>
-                            <th class="py-3 px-4">Tgl Lahir / Umur</th>
-                            <th class="py-3 px-4">Domisili</th>
-                            <th class="py-3 px-4">Awal Kontrak</th>
-                            <th class="py-3 px-4">Akhir Kontrak</th>
-                            <th class="py-3 px-4">Sisa Kontrak</th>
-                            <th class="py-3 px-4">KPI</th>
-                            <th class="py-3 px-4 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body" class="divide-y divide-slate-100">
-                        <!-- Dynamic Content Generated via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Empty State -->
-        <div id="empty-state" class="hidden text-center py-12 bg-white rounded-xl border border-slate-200">
-            <i data-lucide="user-x" class="w-12 h-12 mx-auto text-slate-300 mb-3"></i>
-            <h4 class="text-base font-semibold text-slate-700">Data Tidak Ditemukan</h4>
-            <p class="text-xs text-slate-400 mt-1">Coba kata kunci atau filter pencarian yang berbeda.</p>
-        </div>
-
-    </main>
-
-    <!-- Modal Form (Add / Edit Karyawan) -->
-    <div id="modal-form" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
-        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden transform scale-95 transition-transform duration-200 max-h-[90vh] flex flex-col">
-            <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-                <h3 id="modal-title" class="text-lg font-bold text-slate-800">Tambah Karyawan</h3>
-                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 transition">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <form id="employee-form" class="p-6 space-y-4 overflow-y-auto">
-                <input type="hidden" id="form-id">
-
-                <!-- Dynamic Photo Edit Section -->
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Foto Profil</label>
-                    <div class="flex items-center space-x-4">
-                        <div class="relative w-16 h-16 rounded-full overflow-hidden border-2 border-indigo-500 bg-slate-100 flex-shrink-0">
-                            <img id="form-photo-preview" src="" alt="Preview" class="w-full h-full object-cover">
-                        </div>
-                        <div class="flex-1 space-y-2">
-                            <label class="cursor-pointer inline-flex items-center px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm">
-                                <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5 text-indigo-600"></i>
-                                Upload Foto Baru
-                                <input type="file" id="form-photo-file" accept="image/*" class="hidden">
-                            </label>
-                            <p class="text-[10px] text-slate-400">Pilih foto dari komputer kamu (opsional).</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap *</label>
-                    <input type="text" id="form-nama" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Lahir *</label>
-                        <input type="date" id="form-tgl-lahir" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nilai KPI (0-100)</label>
-                        <input type="number" id="form-kpi" min="0" max="100" value="80" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tempat Tinggal / Domisili</label>
-                    <input type="text" id="form-tempat-tinggal" placeholder="misal: Jakarta Selatan" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Awal Kontrak *</label>
-                        <input type="date" id="form-awal-kontrak" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Akhir Kontrak *</label>
-                        <input type="date" id="form-akhir-kontrak" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                </div>
-
-                <div class="pt-4 border-t border-slate-200 flex justify-end space-x-3">
-                    <button type="button" id="btn-cancel-modal" class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
-                        Batal
-                    </button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition shadow-md">
-                        Simpan Data
-                    </button>
-                </div>
-            </form>
-        </div>
+      </div>
     </div>
 
-    <!-- Modal Detail Karyawan -->
-    <div id="modal-detail" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden transform scale-95 transition-transform duration-200">
-            <div id="detail-card-content">
-                <!-- Dynamic Content via JS -->
-            </div>
-            <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end">
-                <button id="btn-close-detail" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-semibold transition">
-                    Tutup
-                </button>
-            </div>
-        </div>
+    <!-- Panel Filter -->
+    <div class="filter-card">
+      <div class="filter-group">
+        <label>Cari Kata Kunci</label>
+        <input type="text" id="search-input" class="filter-control" placeholder="Cari Stasiun, Problem, Action..." oninput="terapkanFilter()">
+      </div>
+
+      <div class="filter-group">
+        <label>Pilih Stasiun</label>
+        <select id="filter-stasiun" class="filter-control" onchange="terapkanFilter()">
+          <option value="">Semua Stasiun</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Filter Rentang Tanggal</label>
+        <input type="text" id="filter-date-range" class="filter-control" placeholder="Pilih Tanggal / Rentang..." readonly>
+      </div>
+
+      <div class="filter-group">
+        <label>Category</label>
+        <select id="filter-category" class="filter-control" onchange="terapkanFilter()">
+          <option value="">Semua Category</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <button class="btn-reset" onclick="resetFilter()">Reset Filter</button>
+      </div>
     </div>
 
-    <!-- Script Application -->
-    <script>
-        // Data Karyawan Awal (22 Orang)
-        const initialEmployees = [
-            { id: 1, nama: "MUHAMMAD EFFENDI", tglLahir: "1993-09-09", tempatTinggal: "Jakarta", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 85, foto: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250" },
-            { id: 2, nama: "EDWARD JANPUTRA K...", tglLahir: "1991-01-02", tempatTinggal: "Jakarta Selatan", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 80, foto: "./edward.jpg" },
-            { id: 3, nama: "RISKE DWI HISMA RANTI", tglLahir: "1998-03-31", tempatTinggal: "Jakarta", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 88, foto: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=250" },
-            { id: 4, nama: "MUHAMAD KHOLID SH...", tglLahir: "2000-06-29", tempatTinggal: "Jakarta", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 82, foto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250" },
-            { id: 5, nama: "MATHEUS MOGOT", tglLahir: "1990-11-07", tempatTinggal: "Tangerang", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 79, foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=250" },
-            { id: 6, nama: "MISBAHUL KARIM", tglLahir: "1991-07-02", tempatTinggal: "Depok", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 84, foto: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=250" },
-            { id: 7, nama: "FAISAL SULAEMAN", tglLahir: "2003-07-31", tempatTinggal: "Bogor", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 86, foto: "./faisal.jpg" },
-            { id: 8, nama: "NENGAH ADITIA WARD...", tglLahir: "2000-12-02", tempatTinggal: "Bekasi", awalKontrak: "2026-06-18", akhirKontrak: "2026-12-31", kpi: 81, foto: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=250" },
-            { id: 9, nama: "MUHAMMAD IKHSAN H...", tglLahir: "2001-07-04", tempatTinggal: "Jakarta", awalKontrak: "2026-04-06", akhirKontrak: "2026-12-31", kpi: 83, foto: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=250" },
-            { id: 10, nama: "I KETUT GUMBYAR", tglLahir: "2002-02-27", tempatTinggal: "Jakarta", awalKontrak: "2026-01-26", akhirKontrak: "2026-09-30", kpi: 75, foto: "ketut.jpg" },
-            { id: 11, nama: "ADAM YOGI SAPUTRA", tglLahir: "1996-10-30", tempatTinggal: "Tangerang", awalKontrak: "2026-05-01", akhirKontrak: "2026-12-31", kpi: 87, foto: "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&q=80&w=250" },
-            { id: 12, nama: "TEGAR SAPUTRA", tglLahir: "2002-06-23", tempatTinggal: "Bekasi", awalKontrak: "2026-01-26", akhirKontrak: "2026-12-31", kpi: 90, foto: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=250" },
-            { id: 13, nama: "TABAH PUTRA WARDA...", tglLahir: "2000-02-23", tempatTinggal: "Depok", awalKontrak: "2026-01-26", akhirKontrak: "2026-12-31", kpi: 83, foto: "https://images.unsplash.com./photo-1527980965255-d3b416303d12?auto=format&fit=crop&q=80&w=250" },
-            { id: 14, nama: "MUHAMMAD HAIKHAL ...", tglLahir: "2005-09-26", tempatTinggal: "Jakarta", awalKontrak: "2026-01-26", akhirKontrak: "2026-10-10", kpi: 78, foto: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=250" },
-            { id: 15, nama: "EDO AGUSTIAN WIBO...", tglLahir: "2002-09-15", tempatTinggal: "Jakarta Timur", awalKontrak: "2026-01-26", akhirKontrak: "2026-09-30", kpi: 76, foto: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=250" },
-            { id: 16, nama: "KHAIRUZAKY PRATAMA", tglLahir: "2000-05-04", tempatTinggal: "Bogor", awalKontrak: "2026-06-27", akhirKontrak: "2026-12-31", kpi: 89, foto: "./firas.jpg" },
-            { id: 17, nama: "FIRAS MOGA SYAHID F", tglLahir: "1993-11-26", tempatTinggal: "Jakarta Utara", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 85, foto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250" },
-            { id: 18, nama: "NANA NUR APRIAN", tglLahir: "1992-04-25", tempatTinggal: "Cibinong", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 89, foto: "./nana.jpg" },
-            { id: 19, nama: "ANDRIANTO RAMADHAN", tglLahir: "1996-02-20", tempatTinggal: "Jakarta Pusat", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 84, foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=250" },
-            { id: 20, nama: "DENISA MEDIRA", tglLahir: "2000-03-10", tempatTinggal: "Jakarta Selatan", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 91, foto: "./denisa.jpg" },
-            { id: 21, nama: "ASIS SISWANTO", tglLahir: "1989-10-10", tempatTinggal: "Jakarta", awalKontrak: "2026-04-01", akhirKontrak: "2026-12-31", kpi: 85, foto: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=250" },
-            { id: 22, nama: "SEPTIAN ADE PUTRA", tglLahir: "1990-09-25", tempatTinggal: "Jakarta", awalKontrak: "2026-01-01", akhirKontrak: "2026-12-31", kpi: 82, foto: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=250" }
-        ];
+    <!-- Indikator Banner Filter Aktif -->
+    <div id="active-filter-badge" class="active-filter-badge">
+      <span id="active-filter-text">Filter Diagram Aktif: -</span>
+      <button style="background: rgba(239, 68, 68, 0.2); border: 1px solid #f87171; color: #f87171; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 11px;" onclick="resetChartClickFilter()">✕ Normalkan Diagram (Reset)</button>
+    </div>
 
-        // Load / Initialize Storage
-        let employees = JSON.parse(localStorage.getItem("employees_db")) || initialEmployees;
+    <div class="dashboard-panel">
+      <!-- 1. GRAFIK TREN HARIAN ATAS -->
+      <div class="chart-card">
+        <div class="chart-title">Tren Jumlah Gangguan Per Tanggal (Klik titik untuk filter / klik ulang untuk normal)</div>
+        <div class="counter-box">
+          <div class="lbl">Record Count</div>
+          <div class="num" id="total-record-count">0</div>
+        </div>
+        <div style="height: 220px; position: relative; margin-top: 10px;">
+          <canvas id="chartTrendHarian"></canvas>
+        </div>
+      </div>
 
-        // Active State
-        let currentView = 'grid';
-        let tempPhotoData = '';
+      <!-- 2. GRID 3 CHART BAWAH -->
+      <div class="bottom-grid">
+        <div class="chart-card">
+          <div class="chart-title" style="text-align: center;">Category (Klik pie)</div>
+          <div class="pie-box">
+            <canvas id="pieChartCategory"></canvas>
+          </div>
+        </div>
 
-        // DOM Elements
-        const gridContainer = document.getElementById('container-grid');
-        const tableContainer = document.getElementById('container-table');
-        const tableBody = document.getElementById('table-body');
-        const emptyState = document.getElementById('empty-state');
-        const searchInput = document.getElementById('input-search');
-        const filterSelect = document.getElementById('select-filter');
+        <div class="chart-card">
+          <div class="chart-title" style="text-align: center;">Top 5 Stasiun (Klik batang)</div>
+          <div style="height: 260px; position: relative;">
+            <canvas id="barTopStasiun"></canvas>
+          </div>
+        </div>
 
-        // Modal Elements
-        const modalForm = document.getElementById('modal-form');
-        const modalTitle = document.getElementById('modal-title');
-        const employeeForm = document.getElementById('employee-form');
-        const formPhotoPreview = document.getElementById('form-photo-preview');
-        const formPhotoFile = document.getElementById('form-photo-file');
+        <div class="chart-card">
+          <div class="chart-title" style="text-align: center;">Waktu Solving SLA (Klik pie)</div>
+          <div class="pie-box">
+            <canvas id="pieChartSLA"></canvas>
+          </div>
+        </div>
+      </div>
 
-        const modalDetail = document.getElementById('modal-detail');
-        const detailCardContent = document.getElementById('detail-card-content');
+      <!-- 3. TABEL MATRIKS SLA SOLVING -->
+      <div class="chart-card">
+        <div class="chart-title">Total Problem / Waktu Solving SLA</div>
+        <div class="sla-table-container">
+          <table class="sla-table">
+            <thead>
+              <tr id="sla-table-header">
+                <th>WAKTU SOLVING</th>
+                <th>Grand Total</th>
+              </tr>
+            </thead>
+            <tbody id="sla-table-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
-        // Helper Functions
-        function calculateDaysRemaining(endDateStr) {
-            const endDate = new Date(endDateStr);
-            const refDate = new Date('2026-10-12'); // Referensi sesuai tabel
-            const diffTime = endDate - refDate;
-            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    <!-- Tabel Data Utama -->
+    <div class="table-container">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>NO</th>
+              <th>STASIUN</th>
+              <th>CATEGORY</th>
+              <th>BRAND OLT</th>
+              <th>TANGGAL DOWN</th>
+              <th>WAKTU DOWN</th>
+              <th>TANGGAL UP</th>
+              <th>WAKTU UP</th>
+              <th>DURASI</th>
+              <th>PROBLEM</th>
+              <th>ACTION</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="isi-tabel">
+            <tr>
+              <td colspan="12" style="text-align: center; padding: 40px; color: #94a3b8;">
+                Menghubungkan ke Google Sheets...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="last-update" id="waktu-update">Terakhir Diperbarui: -</div>
+  </div>
+
+  <!-- Modal Pop-up Input Data Baru (Lengkap) -->
+  <div class="modal-overlay" id="modal-form">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Input Gangguan OLT Baru</h2>
+        <button class="close-modal" onclick="tutupModal()">&times;</button>
+      </div>
+      <form id="form-olt" onsubmit="simpanData(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Stasiun</label>
+            <input type="text" id="input-stasiun" class="form-control" placeholder="Contoh: ST. ARJASA" required>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="input-category" class="form-control" required>
+              <option value="FO Cut">FO Cut</option>
+              <option value="Power Issue">Power Issue</option>
+              <option value="Perangkat">Perangkat</option>
+              <option value="Impact Activity">Impact Activity</option>
+              <option value="Electrical">Electrical</option>
+              <option value="MPLS">MPLS</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Brand OLT</label>
+            <input type="text" id="input-brand" class="form-control" placeholder="Contoh: HUAWEI / FIBERHOME / NOKIA">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="input-status" class="form-control" required>
+              <option value="DOWN">DOWN</option>
+              <option value="PROGRESS">PROGRESS</option>
+              <option value="CLOSE">CLOSE</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tanggal Down</label>
+            <input type="text" id="input-tgl-down" class="form-control" placeholder="Contoh: 30 October 2026" required>
+          </div>
+          <div class="form-group">
+            <label>Waktu Down</label>
+            <input type="text" id="input-waktu-down" class="form-control" placeholder="Contoh: 2026-10-30 10:07:09" required>
+          </div>
+          <div class="form-group">
+            <label>Tanggal Up</label>
+            <input type="text" id="input-tgl-up" class="form-control" placeholder="Contoh: 30 October 2026 atau -">
+          </div>
+          <div class="form-group">
+            <label>Waktu Up</label>
+            <input type="text" id="input-waktu-up" class="form-control" placeholder="Contoh: 2026-10-30 12:00:00 atau -">
+          </div>
+          <div class="form-group">
+            <label>Durasi</label>
+            <input type="text" id="input-durasi" class="form-control" placeholder="Contoh: 1:57:57 atau -">
+          </div>
+          <div class="form-group">
+            <label>Waktu Solving (SLA)</label>
+            <select id="input-sla" class="form-control">
+              <option value="< 4 Hour">&lt; 4 Hour</option>
+              <option value="> 4 Hour">&gt; 4 Hour</option>
+            </select>
+          </div>
+          <div class="form-group form-group-full">
+            <label>Problem / Masalah</label>
+            <textarea id="input-problem" class="form-control" rows="2" placeholder="Deskripsi problem..."></textarea>
+          </div>
+          <div class="form-group form-group-full">
+            <label>Action / Penanganan</label>
+            <textarea id="input-action" class="form-control" rows="2" placeholder="Tindakan penanganan..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="tutupModal()">Batal</button>
+          <button type="submit" id="btn-submit-form" class="btn-submit">Simpan ke Google Sheets</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <script>
+    const SPREADSHEET_ID = "1ALrR_In0bq_9fBM-irHLsSKO7sCq0r7_MaFZ70mdStY";
+    const GID = "676156381";
+    const FETCH_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+    
+    // Ganti URL di bawah ini dengan URL Web App Apps Script milikmu
+   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzuOvVo1CqbJ1ptWXC2Yer5BAGAlPf6pAIXPW6fX7NQRWmbTIg9gEwsUe-9ilbonJBB/exec";
+
+   
+    let mappedData = [];
+    let fpInstance = null;
+    let selectedStartDate = null;
+    let selectedEndDate = null;
+
+    let chartClickFilter = { type: null, value: null };
+
+    let chartTrendHarianInstance = null;
+    let pieCategoryInstance = null;
+    let barTopStasiunInstance = null;
+    let pieSLAInstance = null;
+
+    Chart.register(ChartDataLabels);
+
+    document.addEventListener("DOMContentLoaded", function() {
+      fpInstance = flatpickr("#filter-date-range", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d M Y",
+        placeholder: "Pilih Rentang Tanggal...",
+        onChange: function(selectedDates) {
+          if (selectedDates.length === 1) {
+            selectedStartDate = setZeroTime(selectedDates[0]);
+            selectedEndDate = setZeroTime(selectedDates[0]);
+          } else if (selectedDates.length === 2) {
+            selectedStartDate = setZeroTime(selectedDates[0]);
+            selectedEndDate = setZeroTime(selectedDates[1]);
+          } else {
+            selectedStartDate = null;
+            selectedEndDate = null;
+          }
+          terapkanFilter();
         }
+      });
 
-        function calculateAge(birthDateStr) {
-            const birthDate = new Date(birthDateStr);
-            const refDate = new Date('2026-10-12');
-            let age = refDate.getFullYear() - birthDate.getFullYear();
-            const m = refDate.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && refDate.getDate() < birthDate.getDate())) {
-                age--;
-            }
-            return age;
-        }
+      const now = new Date();
+      const optionsTgl = { day: '2-digit', month: 'long', year: 'numeric' };
+      document.getElementById('input-tgl-down').value = now.toLocaleDateString('en-GB', optionsTgl);
+      
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('input-waktu-down').value = `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
 
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            return new Date(dateStr).toLocaleDateString('id-ID', options);
-        }
+      ambilData();
+      setInterval(ambilData, 10000);
+    });
 
-        function saveToStorage() {
-            localStorage.setItem("employees_db", JSON.stringify(employees));
-            render();
-        }
+    function setZeroTime(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
 
-        // Render Cards & Table
-        function render() {
-            const query = searchInput.value.toLowerCase();
-            const filterVal = filterSelect.value;
+    function bukaModal() { document.getElementById("modal-form").style.display = "flex"; }
+    function tutupModal() { document.getElementById("modal-form").style.display = "none"; }
 
-            const filtered = employees.filter(emp => {
-                const daysLeft = calculateDaysRemaining(emp.akhirKontrak);
-                const matchesSearch = emp.nama.toLowerCase().includes(query) || emp.tempatTinggal.toLowerCase().includes(query);
-                
-                let matchesFilter = true;
-                if (filterVal === 'safe') matchesFilter = daysLeft > 30;
-                else if (filterVal === 'warning') matchesFilter = daysLeft > 0 && daysLeft <= 30;
-                else if (filterVal === 'expired') matchesFilter = daysLeft <= 0;
+    async function simpanData(e) {
+      e.preventDefault();
+      const btnSubmit = document.getElementById("btn-submit-form");
+      btnSubmit.innerText = "Mengirim...";
+      btnSubmit.disabled = true;
 
-                return matchesSearch && matchesFilter;
-            });
+      const payload = {
+        stasiun: document.getElementById("input-stasiun").value,
+        category: document.getElementById("input-category").value,
+        brand: document.getElementById("input-brand").value,
+        status: document.getElementById("input-status").value,
+        tanggalDown: document.getElementById("input-tgl-down").value,
+        waktuDown: document.getElementById("input-waktu-down").value,
+        tanggalUp: document.getElementById("input-tgl-up").value || "-",
+        waktuUp: document.getElementById("input-waktu-up").value || "-",
+        durasi: document.getElementById("input-durasi").value || "-",
+        waktuSolving: document.getElementById("input-sla").value || "< 4 Hour",
+        problem: document.getElementById("input-problem").value,
+        action: document.getElementById("input-action").value
+      };
 
-            // Update Header Stats
-            document.getElementById('stat-total').textContent = employees.length;
-            document.getElementById('stat-safe').textContent = employees.filter(e => calculateDaysRemaining(e.akhirKontrak) > 30).length;
-            document.getElementById('stat-warning').textContent = employees.filter(e => { const d = calculateDaysRemaining(e.akhirKontrak); return d > 0 && d <= 30; }).length;
-            document.getElementById('stat-expired').textContent = employees.filter(e => calculateDaysRemaining(e.akhirKontrak) <= 0).length;
-
-            if (filtered.length === 0) {
-                gridContainer.classList.add('hidden');
-                tableContainer.classList.add('hidden');
-                emptyState.classList.remove('hidden');
-                return;
-            }
-
-            emptyState.classList.add('hidden');
-
-            if (currentView === 'grid') {
-                gridContainer.classList.remove('hidden');
-                tableContainer.classList.add('hidden');
-                renderGrid(filtered);
-            } else {
-                gridContainer.classList.add('hidden');
-                tableContainer.classList.remove('hidden');
-                renderTable(filtered);
-            }
-
-            lucide.createIcons();
-        }
-
-        function renderGrid(list) {
-            gridContainer.innerHTML = list.map(emp => {
-                const days = calculateDaysRemaining(emp.akhirKontrak);
-                const isExpired = days <= 0;
-                const isWarning = days > 0 && days <= 30;
-
-                let statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
-                if (isExpired) statusBadge = `<span class="bg-rose-100 text-rose-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
-                else if (isWarning) statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
-
-                return `
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition p-5 relative flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-start justify-between">
-                            <div class="flex items-center space-x-3">
-                                <img src="${emp.foto}" alt="${emp.nama}" class="w-12 h-12 rounded-full object-cover border-2 border-indigo-100">
-                                <div>
-                                    <h3 class="font-bold text-slate-800 text-sm leading-snug hover:text-indigo-600 transition cursor-pointer" onclick="openDetail(${emp.id})">${emp.nama}</h3>
-                                    <p class="text-xs text-slate-500">${emp.tempatTinggal || 'Indonesia'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                                <span class="text-slate-400 block text-[10px]">TANGGAL LAHIR</span>
-                                <span class="font-medium text-slate-700">${formatDate(emp.tglLahir)}</span>
-                            </div>
-                            <div>
-                                <span class="text-slate-400 block text-[10px]">SISA KONTRAK</span>
-                                ${statusBadge}
-                            </div>
-                            <div>
-                                <span class="text-slate-400 block text-[10px]">AWAL KONTRAK</span>
-                                <span class="font-medium text-slate-700">${formatDate(emp.awalKontrak)}</span>
-                            </div>
-                            <div>
-                                <span class="text-slate-400 block text-[10px]">AKHIR KONTRAK</span>
-                                <span class="font-medium text-slate-700">${formatDate(emp.akhirKontrak)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                        <div class="flex items-center space-x-1 text-xs text-indigo-600 font-semibold">
-                            <i data-lucide="award" class="w-4 h-4"></i>
-                            <span>KPI: ${emp.kpi}</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="openEdit(${emp.id})" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition" title="Edit">
-                                <i data-lucide="edit-3" class="w-4 h-4"></i>
-                            </button>
-                            <button onclick="deleteEmployee(${emp.id})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition" title="Hapus">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        function renderTable(list) {
-            tableBody.innerHTML = list.map(emp => {
-                const days = calculateDaysRemaining(emp.akhirKontrak);
-                const isExpired = days <= 0;
-                const isWarning = days > 0 && days <= 30;
-
-                let statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
-                if (isExpired) statusBadge = `<span class="bg-rose-100 text-rose-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
-                else if (isWarning) statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">${days} Hari</span>`;
-
-                return `
-                <tr class="hover:bg-slate-50 transition">
-                    <td class="py-3 px-4 flex items-center space-x-3">
-                        <img src="${emp.foto}" alt="${emp.nama}" class="w-8 h-8 rounded-full object-cover">
-                        <span class="font-medium text-slate-800 hover:text-indigo-600 cursor-pointer" onclick="openDetail(${emp.id})">${emp.nama}</span>
-                    </td>
-                    <td class="py-3 px-4 text-xs text-slate-600">${formatDate(emp.tglLahir)} (${calculateAge(emp.tglLahir)} th)</td>
-                    <td class="py-3 px-4 text-xs text-slate-600">${emp.tempatTinggal || '-'}</td>
-                    <td class="py-3 px-4 text-xs text-slate-600">${formatDate(emp.awalKontrak)}</td>
-                    <td class="py-3 px-4 text-xs text-slate-600">${formatDate(emp.akhirKontrak)}</td>
-                    <td class="py-3 px-4 text-xs">${statusBadge}</td>
-                    <td class="py-3 px-4 text-xs font-semibold text-indigo-600">${emp.kpi}</td>
-                    <td class="py-3 px-4 text-center">
-                        <div class="flex items-center justify-center space-x-2">
-                            <button onclick="openEdit(${emp.id})" class="text-slate-400 hover:text-indigo-600 p-1"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                            <button onclick="deleteEmployee(${emp.id})" class="text-slate-400 hover:text-rose-600 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </div>
-                    </td>
-                </tr>
-                `;
-            }).join('');
-        }
-
-        // Handle Image Upload File
-        formPhotoFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    tempPhotoData = evt.target.result;
-                    formPhotoPreview.src = tempPhotoData;
-                };
-                reader.readAsDataURL(file);
-            }
+      try {
+        await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
 
-        // Open Modal Add
-        document.getElementById('btn-add-modal').addEventListener('click', () => {
-            modalTitle.textContent = "Tambah Karyawan Baru";
-            employeeForm.reset();
-            document.getElementById('form-id').value = '';
-            tempPhotoData = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250";
-            formPhotoPreview.src = tempPhotoData;
-            showModal(modalForm);
-        });
+        alert("Data berhasil disimpan ke Google Sheets!");
+        tutupModal();
+        document.getElementById("form-olt").reset();
+        setTimeout(ambilData, 2000);
 
-        // Open Modal Edit
-        window.openEdit = function(id) {
-            const emp = employees.find(e => e.id === id);
-            if (!emp) return;
+      } catch (err) {
+        console.error("Gagal simpan:", err);
+        alert("Gagal mengirim data. Silakan coba lagi.");
+      } finally {
+        btnSubmit.innerText = "Simpan ke Google Sheets";
+        btnSubmit.disabled = false;
+      }
+    }
 
-            modalTitle.textContent = "Edit Data & Foto Karyawan";
-            document.getElementById('form-id').value = emp.id;
-            document.getElementById('form-nama').value = emp.nama;
-            document.getElementById('form-tgl-lahir').value = emp.tglLahir;
-            document.getElementById('form-tempat-tinggal').value = emp.tempatTinggal;
-            document.getElementById('form-awal-kontrak').value = emp.awalKontrak;
-            document.getElementById('form-akhir-kontrak').value = emp.akhirKontrak;
-            document.getElementById('form-kpi').value = emp.kpi;
+    function ekstrakJam(str) {
+      if (!str || str === '-' || str.trim() === '') return '-';
+      str = str.trim();
+
+      if (str.includes(' ')) {
+        const parts = str.split(/\s+/);
+        for (let p of parts) {
+          if (p.includes(':')) return p;
+        }
+      }
+
+      if (str.includes(':')) return str;
+
+      const num = parseFloat(str);
+      if (!isNaN(num) && num > 0 && num < 1) {
+        const totalDetik = Math.round(num * 86400);
+        const hh = String(Math.floor(totalDetik / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((totalDetik % 3600) / 60)).padStart(2, '0');
+        const ss = String(totalDetik % 60).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
+      }
+
+      return str;
+    }
+
+    function hitungMenitDurasi(strDurasi) {
+      if (!strDurasi || strDurasi === '-' || strDurasi.trim() === '') return 0;
+      strDurasi = strDurasi.trim();
+
+      if (strDurasi.includes(':')) {
+        const parts = strDurasi.split(':').map(Number);
+        if (parts.length === 3) {
+          return (parts[0] * 60) + parts[1] + (parts[2] / 60);
+        } else if (parts.length === 2) {
+          return (parts[0] * 60) + parts[1];
+        }
+      }
+
+      const jamMatch = strDurasi.match(/(\d+)\s*(jam|hr|hour)/i);
+      const menitMatch = strDurasi.match(/(\d+)\s*(menit|min)/i);
+      let total = 0;
+      if (jamMatch) total += parseInt(jamMatch[1], 10) * 60;
+      if (menitMatch) total += parseInt(menitMatch[1], 10);
+
+      return total;
+    }
+
+    function parseStringDate(str) {
+      if (!str || str === '-' || str.trim() === '') return null;
+      str = str.trim();
+
+      if (str.includes(' ') && str.includes(':')) {
+        str = str.split(' ')[0];
+      }
+
+      const monthMap = {
+        january:0, jan:0, february:1, feb:1, march:2, mar:2, april:3, apr:3,
+        may:4, june:5, jun:5, july:6, jul:6, august:7, aug:7,
+        september:8, sep:8, oct:9, october:9, november:10, nov:10, december:11, dec:11
+      };
+
+      const parts = str.split(/[\s\-]+/);
+      if (parts.length === 3) {
+        const d = parseInt(parts[0], 10);
+        const mStr = parts[1].toLowerCase();
+        let y = parseInt(parts[2], 10);
+
+        if (!isNaN(d) && !isNaN(y) && monthMap[mStr] !== undefined) {
+          if (y < 100) y += 2000;
+          return new Date(y, monthMap[mStr], d);
+        }
+      }
+
+      const partsSlash = str.split('/');
+      if (partsSlash.length === 3) {
+        const m = parseInt(partsSlash[0], 10) - 1;
+        const d = parseInt(partsSlash[1], 10);
+        let y = parseInt(partsSlash[2], 10);
+        if (y < 100) y += 2000;
+        if (!isNaN(m) && !isNaN(d) && !isNaN(y)) {
+          return new Date(y, m, d);
+        }
+      }
+
+      const dt = new Date(str);
+      if (!isNaN(dt.getTime())) {
+        dt.setHours(0,0,0,0);
+        return dt;
+      }
+
+      return null;
+    }
+
+    function parseCSV(text) {
+      const lines = text.split('\n');
+      return lines.map(line => {
+        const row = [];
+        let insideQuote = false;
+        let entry = '';
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"' && (i === 0 || line[i-1] !== '\\')) {
+            insideQuote = !insideQuote;
+          } else if (char === ',' && !insideQuote) {
+            row.push(entry.replace(/^"|"$/g, '').trim());
+            entry = '';
+          } else {
+            entry += char;
+          }
+        }
+        row.push(entry.replace(/^"|"$/g, '').trim());
+        return row;
+      });
+    }
+
+    async function ambilData() {
+      try {
+        const respon = await fetch(FETCH_URL);
+        const teks = await respon.text();
+        const baris = parseCSV(teks);
+
+        if (baris.length < 2) return;
+
+        let startRowIndex = 1;
+        for (let i = 0; i < Math.min(baris.length, 10); i++) {
+          if (baris[i] && baris[i][0] && !isNaN(baris[i][0].trim())) {
+            startRowIndex = i;
+            break;
+          }
+        }
+
+        mappedData = baris.slice(startRowIndex)
+          .filter(b => b.length > 6 && b[0] && b[0].trim() !== '')
+          .map((b, idx) => {
+            const rawNo = b[0] ? b[0].trim() : (idx + 1);
+            let rawTglDown = b[1] ? b[1].trim() : '-';
+            let rawWaktuDown = b[2] ? ekstrakJam(b[2]) : '-';
+            let rawTglUp = b[3] ? b[3].trim() : '-';
+            let rawWaktuUp = b[4] ? ekstrakJam(b[4]) : '-';
+            const rawDurasiSheet = b[5] ? ekstrakJam(b[5]) : '-';
             
-            tempPhotoData = emp.foto;
-            formPhotoPreview.src = tempPhotoData;
+            const rawStasiun = b[7] ? b[7].trim() : '-';
+            const rawCategory = b[8] ? b[8].trim() : '-';
+            const rawBrand = b[9] ? b[9].trim() : '-';
+            const rawProblem = b[10] ? b[10].trim() : '-';
+            const rawAction = b[11] ? b[11].trim() : '-';
+            const rawStatus = b[12] ? b[12].trim() : 'DOWN';
 
-            showModal(modalForm);
-        };
+            const parsedObjDate = parseStringDate(rawTglDown);
+            const durasiMenit = hitungMenitDurasi(rawDurasiSheet);
 
-        // Form Submit Save
-        employeeForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const id = document.getElementById('form-id').value;
-            const nama = document.getElementById('form-nama').value;
-            const tglLahir = document.getElementById('form-tgl-lahir').value;
-            const tempatTinggal = document.getElementById('form-tempat-tinggal').value;
-            const awalKontrak = document.getElementById('form-awal-kontrak').value;
-            const akhirKontrak = document.getElementById('form-akhir-kontrak').value;
-            const kpi = Number(document.getElementById('form-kpi').value);
+            return {
+              no: rawNo,
+              stasiun: rawStasiun,
+              category: rawCategory,
+              brand: rawBrand,
+              tanggalDown: rawTglDown,
+              waktuDown: rawWaktuDown,
+              tanggalUp: rawTglUp,
+              waktuUp: rawWaktuUp,
+              durasi: rawDurasiSheet,
+              durasiMenit: durasiMenit,
+              dateObj: parsedObjDate,
+              problem: rawProblem,
+              action: rawAction,
+              status: rawStatus
+            };
+          });
 
-            if (id) {
-                // Update
-                const index = employees.findIndex(e => e.id == id);
-                if (index !== -1) {
-                    employees[index] = { ...employees[index], nama, tglLahir, tempatTinggal, awalKontrak, akhirKontrak, kpi, foto: tempPhotoData };
-                }
-            } else {
-                // Insert Baru
-                const newEmp = {
-                    id: Date.now(),
-                    nama,
-                    tglLahir,
-                    tempatTinggal,
-                    awalKontrak,
-                    akhirKontrak,
-                    kpi,
-                    foto: tempPhotoData
-                };
-                employees.push(newEmp);
-            }
+        updateDropdowns();
+        terapkanFilter();
 
-            saveToStorage();
-            hideModal(modalForm);
-        });
+        const skrg = new Date().toLocaleTimeString('id-ID');
+        document.getElementById("waktu-update").innerText = "Terakhir Diperbarui: " + skrg;
 
-        // Delete Employee
-        window.deleteEmployee = function(id) {
-            if (confirm("Apakah Anda yakin ingin menghapus data karyawan ini?")) {
-                employees = employees.filter(e => e.id !== id);
-                saveToStorage();
-            }
-        };
+      } catch (err) {
+        console.error("Gagal narik data:", err);
+      }
+    }
 
-        // Open Detail
-        window.openDetail = function(id) {
-            const emp = employees.find(e => e.id === id);
-            if (!emp) return;
+    function updateDropdowns() {
+      const selectStasiun = document.getElementById("filter-stasiun");
+      const selectCategory = document.getElementById("filter-category");
 
-            const days = calculateDaysRemaining(emp.akhirKontrak);
-            const age = calculateAge(emp.tglLahir);
+      const currentStasiun = selectStasiun.value;
+      const currentCategory = selectCategory.value;
 
-            detailCardContent.innerHTML = `
-                <div class="bg-indigo-600 p-6 text-white text-center relative">
-                    <img src="${emp.foto}" alt="${emp.nama}" class="w-20 h-20 rounded-full object-cover border-4 border-white mx-auto shadow-md">
-                    <h3 class="text-lg font-bold mt-2">${emp.nama}</h3>
-                    <p class="text-xs text-indigo-200">${emp.tempatTinggal || 'Indonesia'}</p>
-                </div>
-                <div class="p-6 space-y-4 text-xs text-slate-600">
-                    <div class="flex justify-between border-b pb-2">
-                        <span class="font-medium text-slate-400">Tanggal Lahir</span>
-                        <span class="font-semibold text-slate-800">${formatDate(emp.tglLahir)} (${age} tahun)</span>
-                    </div>
-                    <div class="flex justify-between border-b pb-2">
-                        <span class="font-medium text-slate-400">Awal Kontrak</span>
-                        <span class="font-semibold text-slate-800">${formatDate(emp.awalKontrak)}</span>
-                    </div>
-                    <div class="flex justify-between border-b pb-2">
-                        <span class="font-medium text-slate-400">Akhir Kontrak</span>
-                        <span class="font-semibold text-slate-800">${formatDate(emp.akhirKontrak)}</span>
-                    </div>
-                    <div class="flex justify-between border-b pb-2">
-                        <span class="font-medium text-slate-400">Sisa Kontrak</span>
-                        <span class="font-bold ${days <= 0 ? 'text-rose-600' : 'text-emerald-600'}">${days} Hari</span>
-                    </div>
-                    <div class="flex justify-between border-b pb-2">
-                        <span class="font-medium text-slate-400">Nilai KPI</span>
-                        <span class="font-bold text-indigo-600 text-sm">${emp.kpi} / 100</span>
-                    </div>
-                </div>
-            `;
-            showModal(modalDetail);
-        };
+      const stasiunUnik = [...new Set(mappedData.map(d => d.stasiun).filter(s => s !== '-' && s !== ''))].sort();
+      selectStasiun.innerHTML = '<option value="">Semua Stasiun (' + stasiunUnik.length + ')</option>' + 
+        stasiunUnik.map(s => `<option value="${s}" ${s === currentStasiun ? 'selected' : ''}>${s}</option>`).join('');
 
-        // Modal Utility
-        function showModal(el) {
-            el.classList.remove('hidden');
-            setTimeout(() => {
-                el.classList.remove('opacity-0');
-                el.children[0].classList.remove('scale-95');
-            }, 10);
+      const categoryUnik = [...new Set(mappedData.map(d => d.category).filter(c => c !== '-' && c !== ''))].sort();
+      selectCategory.innerHTML = '<option value="">Semua Category</option>' + 
+        categoryUnik.map(c => `<option value="${c}" ${c === currentCategory ? 'selected' : ''}>${c}</option>`).join('');
+    }
+
+    function handleChartClick(type, value) {
+      if (chartClickFilter.type === type && chartClickFilter.value === value) {
+        chartClickFilter = { type: null, value: null };
+        document.getElementById('active-filter-badge').style.display = 'none';
+      } else {
+        chartClickFilter = { type: type, value: value };
+        document.getElementById('active-filter-text').innerText = `Filter Diagram Aktif: ${type.toUpperCase()} (${value})`;
+        document.getElementById('active-filter-badge').style.display = 'flex';
+      }
+      terapkanFilter();
+    }
+
+    function resetChartClickFilter() {
+      chartClickFilter = { type: null, value: null };
+      document.getElementById('active-filter-badge').style.display = 'none';
+      terapkanFilter();
+    }
+
+    function terapkanFilter() {
+      const kw = document.getElementById("search-input").value.toLowerCase();
+      const stasiun = document.getElementById("filter-stasiun").value;
+      const category = document.getElementById("filter-category").value;
+
+      const hasil = mappedData.filter(item => {
+        const cocokKw = Object.values(item).some(v => typeof v === 'string' && v.toLowerCase().includes(kw));
+        const cocokStasiun = !stasiun || item.stasiun === stasiun;
+        const cocokCategory = !category || item.category === category;
+
+        let cocokTanggal = true;
+        if (selectedStartDate && selectedEndDate) {
+          if (item.dateObj) {
+            const start = setZeroTime(selectedStartDate);
+            const end = setZeroTime(selectedEndDate);
+            const target = setZeroTime(item.dateObj);
+            cocokTanggal = target >= start && target <= end;
+          } else {
+            cocokTanggal = false;
+          }
         }
 
-        function hideModal(el) {
-            el.classList.add('opacity-0');
-            el.children[0].classList.add('scale-95');
-            setTimeout(() => {
-                el.classList.add('hidden');
-            }, 200);
+        let cocokChart = true;
+        if (chartClickFilter.type === 'tanggal') {
+          cocokChart = item.tanggalDown === chartClickFilter.value;
+        } else if (chartClickFilter.type === 'category') {
+          cocokChart = item.category === chartClickFilter.value;
+        } else if (chartClickFilter.type === 'stasiun') {
+          cocokChart = item.stasiun === chartClickFilter.value;
+        } else if (chartClickFilter.type === 'sla') {
+          if (chartClickFilter.value === '< 4 Hour') {
+            cocokChart = item.durasiMenit > 0 && item.durasiMenit <= 240;
+          } else if (chartClickFilter.value === '> 4 Hour') {
+            cocokChart = item.durasiMenit > 240;
+          }
         }
 
-        document.getElementById('btn-close-modal').addEventListener('click', () => hideModal(modalForm));
-        document.getElementById('btn-cancel-modal').addEventListener('click', () => hideModal(modalForm));
-        document.getElementById('btn-close-detail').addEventListener('click', () => hideModal(modalDetail));
+        return cocokKw && cocokStasiun && cocokCategory && cocokTanggal && cocokChart;
+      });
 
-        // Switch Views
-        document.getElementById('view-grid').addEventListener('click', () => {
-            currentView = 'grid';
-            render();
+      renderTabel(hasil);
+      updateAnalytics(hasil);
+    }
+
+    function resetFilter() {
+      document.getElementById("search-input").value = "";
+      document.getElementById("filter-stasiun").value = "";
+      document.getElementById("filter-category").value = "";
+      
+      if (fpInstance) { fpInstance.clear(); }
+      selectedStartDate = null;
+      selectedEndDate = null;
+
+      resetChartClickFilter();
+    }
+
+    function renderTabel(data) {
+      const tbody = document.getElementById("isi-tabel");
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 30px; color: #94a3b8;">Tidak ada data OLT yang cocok dengan filter.</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      data.forEach((item) => {
+        let statusBadge = `<span class="badge badge-down">${item.status}</span>`;
+        if (/progress|penanganan/i.test(item.status)) {
+          statusBadge = `<span class="badge badge-progress">${item.status}</span>`;
+        } else if (/resolved|clear|close|up|selesai/i.test(item.status)) {
+          statusBadge = `<span class="badge badge-resolved">${item.status}</span>`;
+        }
+
+        html += `<tr>
+          <td>${item.no}</td>
+          <td><span class="stasiun-tag">${item.stasiun}</span></td>
+          <td>${item.category}</td>
+          <td><span class="brand-tag">${item.brand}</span></td>
+          <td><b>${item.tanggalDown}</b></td>
+          <td>${item.waktuDown}</td>
+          <td><b style="color: #4ade80;">${item.tanggalUp}</b></td>
+          <td style="color: #4ade80;">${item.waktuUp}</td>
+          <td><span class="duration-tag">⏳ ${item.durasi}</span></td>
+          <td>${item.problem}</td>
+          <td>${item.action}</td>
+          <td>${statusBadge}</td>
+        </tr>`;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function updateAnalytics(data) {
+      document.getElementById("total-record-count").innerText = data.length.toLocaleString('id-ID');
+
+      // 1. TREN HARIAN
+      const perTanggalMap = {};
+      data.forEach(d => {
+        const tgl = d.tanggalDown || 'Lainnya';
+        perTanggalMap[tgl] = (perTanggalMap[tgl] || 0) + 1;
+      });
+
+      const labelsTanggal = Object.keys(perTanggalMap);
+      const valuesTanggal = Object.values(perTanggalMap);
+
+      if (chartTrendHarianInstance) chartTrendHarianInstance.destroy();
+      const ctxTrend = document.getElementById('chartTrendHarian').getContext('2d');
+      chartTrendHarianInstance = new Chart(ctxTrend, {
+        type: 'line',
+        data: {
+          labels: labelsTanggal,
+          datasets: [{
+            label: 'Total Down',
+            data: valuesTanggal,
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.15)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#38bdf8',
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: { color: '#ffffff', font: { weight: 'bold', size: 10 }, anchor: 'end', align: 'top' }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1f2d4a' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1f2d4a' }, beginAtZero: true }
+          },
+          onClick: (evt, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              handleChartClick('tanggal', labelsTanggal[index]);
+            }
+          }
+        }
+      });
+
+      // 2. PIE CATEGORY
+      const categoryMap = {};
+      data.forEach(d => {
+        const cat = d.category || 'Uncategorized';
+        categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+      });
+
+      const labelsCategory = Object.keys(categoryMap);
+      const valuesCategory = Object.values(categoryMap);
+      const colorsCategory = ['#38bdf8', '#c084fc', '#fb923c', '#4ade80', '#f87171', '#eab308'];
+
+      if (pieCategoryInstance) pieCategoryInstance.destroy();
+      const ctxCat = document.getElementById('pieChartCategory').getContext('2d');
+      pieCategoryInstance = new Chart(ctxCat, {
+        type: 'doughnut',
+        data: {
+          labels: labelsCategory,
+          datasets: [{
+            data: valuesCategory,
+            backgroundColor: colorsCategory.slice(0, labelsCategory.length)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#f8fafc', font: { size: 11 } } },
+            datalabels: { color: '#0b1329', font: { weight: 'bold', size: 11 } }
+          },
+          onClick: (evt, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              handleChartClick('category', labelsCategory[index]);
+            }
+          }
+        }
+      });
+
+      // 3. TOP 5 STASIUN
+      const stasiunMap = {};
+      data.forEach(d => {
+        const st = d.stasiun || 'Unknown';
+        stasiunMap[st] = (stasiunMap[st] || 0) + 1;
+      });
+
+      const sortedStasiun = Object.entries(stasiunMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      const labelsTopStasiun = sortedStasiun.map(item => item[0]);
+      const valuesTopStasiun = sortedStasiun.map(item => item[1]);
+
+      if (barTopStasiunInstance) barTopStasiunInstance.destroy();
+      const ctxStasiun = document.getElementById('barTopStasiun').getContext('2d');
+      barTopStasiunInstance = new Chart(ctxStasiun, {
+        type: 'bar',
+        data: {
+          labels: labelsTopStasiun,
+          datasets: [{
+            data: valuesTopStasiun,
+            backgroundColor: '#c084fc',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: { color: '#ffffff', font: { weight: 'bold', size: 11 }, anchor: 'end', align: 'end' }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1f2d4a' }, beginAtZero: true }
+          },
+          onClick: (evt, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              handleChartClick('stasiun', labelsTopStasiun[index]);
+            }
+          }
+        }
+      });
+
+      // 4. PIE SLA
+      let countUnder4h = 0;
+      let countOver4h = 0;
+
+      data.forEach(d => {
+        if (d.durasiMenit > 0 && d.durasiMenit <= 240) {
+          countUnder4h++;
+        } else if (d.durasiMenit > 240) {
+          countOver4h++;
+        }
+      });
+
+      const labelsSLA = ['< 4 Hour', '> 4 Hour'];
+      const valuesSLA = [countUnder4h, countOver4h];
+
+      if (pieSLAInstance) pieSLAInstance.destroy();
+      const ctxSLA = document.getElementById('pieChartSLA').getContext('2d');
+      pieSLAInstance = new Chart(ctxSLA, {
+        type: 'pie',
+        data: {
+          labels: labelsSLA,
+          datasets: [{
+            data: valuesSLA,
+            backgroundColor: ['#4ade80', '#f87171']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#f8fafc', font: { size: 11 } } },
+            datalabels: { color: '#0b1329', font: { weight: 'bold', size: 11 } }
+          },
+          onClick: (evt, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              handleChartClick('sla', labelsSLA[index]);
+            }
+          }
+        }
+      });
+
+      // 5. RENDERING MATRIKS TABEL SLA
+      renderMatriksSLA(data);
+    }
+
+    function renderMatriksSLA(data) {
+      const categories = [...new Set(mappedData.map(d => d.category).filter(c => c && c !== '-'))].sort();
+      const theadHeader = document.getElementById("sla-table-header");
+      const tbody = document.getElementById("sla-table-body");
+
+      let headerHtml = '<th>WAKTU SOLVING</th>';
+      categories.forEach(cat => {
+        headerHtml += `<th>${cat}</th>`;
+      });
+      headerHtml += '<th>Grand Total</th>';
+      theadHeader.innerHTML = headerHtml;
+
+      const slaRanges = [
+        { label: '< 4 Hour', filter: d => d.durasiMenit > 0 && d.durasiMenit <= 240 },
+        { label: '> 4 Hour', filter: d => d.durasiMenit > 240 }
+      ];
+
+      let tbodyHtml = '';
+      const categoryTotals = {};
+      categories.forEach(cat => categoryTotals[cat] = 0);
+      let grandTotalAll = 0;
+
+      slaRanges.forEach(range => {
+        tbodyHtml += `<tr><td class="highlight-cell">${range.label}</td>`;
+        let rowTotal = 0;
+
+        categories.forEach(cat => {
+          const count = data.filter(d => d.category === cat && range.filter(d)).length;
+          tbodyHtml += `<td>${count}</td>`;
+          rowTotal += count;
+          categoryTotals[cat] += count;
         });
-        document.getElementById('view-table').addEventListener('click', () => {
-            currentView = 'table';
-            render();
-        });
 
-        // Search & Filter Events
-        searchInput.addEventListener('input', render);
-        filterSelect.addEventListener('change', render);
+        tbodyHtml += `<td class="highlight-cell">${rowTotal}</td></tr>`;
+        grandTotalAll += rowTotal;
+      });
 
-        // Initial Render
-        render();
-    </script>
+      tbodyHtml += `<tr style="font-weight: bold; background: #0f172a;"><td class="highlight-cell">Grand Total</td>`;
+      categories.forEach(cat => {
+        tbodyHtml += `<td class="highlight-cell">${categoryTotals[cat]}</td>`;
+      });
+      tbodyHtml += `<td class="highlight-cell">${grandTotalAll}</td></tr>`;
+
+      tbody.innerHTML = tbodyHtml;
+    }
+  </script>
 </body>
 </html>

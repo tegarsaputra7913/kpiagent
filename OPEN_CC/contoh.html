@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buku Catatan Piutang Tegar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-10">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-500 text-slate-900 p-2 rounded-xl font-bold">
+                    <i class="fa-solid fa-wallet text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none">Buku Piutang Tegar</h1>
+                    <span class="text-xs text-emerald-400 font-medium">Catatan Utang Pribadi</span>
+                </div>
+            </div>
+            <button onclick="toggleRekeningModal()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-2 rounded-lg transition border border-slate-600 flex items-center gap-2">
+                <i class="fa-solid fa-building-columns text-emerald-400"></i> Info Rekening
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
+
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <p class="text-xs text-slate-400">Total Belum Dibayar</p>
+                <p id="totalBelumLunas" class="text-2xl font-bold text-red-400 mt-1">Rp 0</p>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <p class="text-xs text-slate-400">Total Sudah Lunas</p>
+                <p id="totalLunas" class="text-2xl font-bold text-emerald-400 mt-1">Rp 0</p>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <p class="text-xs text-slate-400">Total Orang Ngutang</p>
+                <p id="totalPeminjam" class="text-2xl font-bold text-sky-400 mt-1">0 Orang</p>
+            </div>
+        </div>
+
+        <!-- Form Tambah Hutang -->
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
+            <h2 class="text-md font-semibold text-emerald-400 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> Catat Piutang Baru
+            </h2>
+            <form id="hutangForm" onsubmit="tambahHutang(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nama Peminjam</label>
+                    <input type="text" id="nama" required placeholder="Contoh: Budi" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Jumlah Utang (Rp)</label>
+                    <input type="number" id="jumlah" required placeholder="50000" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Tanggal Pinjam</label>
+                    <input type="date" id="tanggal" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Keterangan / Alasan</label>
+                    <input type="text" id="keterangan" placeholder="Contoh: Pinjam buat beli bensin" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="md:col-span-2">
+                    <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold py-2 rounded-lg transition text-sm">
+                        Simpan Catatan
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Filter & Search -->
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+            <input type="text" id="searchInput" oninput="renderDaftar()" placeholder="Cari nama peminjam..." class="w-full sm:w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button onclick="filterStatus('semua')" class="filter-btn text-xs px-3 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold">Semua</button>
+                <button onclick="filterStatus('belum')" class="filter-btn text-xs px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">Belum Lunas</button>
+                <button onclick="filterStatus('lunas')" class="filter-btn text-xs px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">Lunas</button>
+            </div>
+        </div>
+
+        <!-- Daftar Hutang Table / Cards -->
+        <div id="daftarHutang" class="space-y-3">
+            <!-- Data akan di-render via JavaScript -->
+        </div>
+
+    </main>
+
+    <!-- Modal Info Rekening -->
+    <div id="rekeningModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-sm w-full relative space-y-4">
+            <button onclick="toggleRekeningModal()" class="absolute top-3 right-4 text-slate-400 hover:text-white">&times;</button>
+            <h3 class="text-md font-bold text-center text-emerald-400">Rekening Pembayaran</h3>
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 text-center space-y-2">
+                <p class="text-xs text-slate-400">Bank BCA</p>
+                <p class="text-xl font-mono font-bold text-white tracking-widest">5310881637</p>
+                <p class="text-xs text-emerald-400">a.n. Tegar Saputra</p>
+                <button onclick="copyRekening()" class="mt-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg border border-slate-600 transition">
+                    <i class="fa-regular fa-copy"></i> Salin No. Rekening
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const initialData = [
+            {
+                id: 1,
+                nama: "Baong",
+                jumlah: 100000,
+                tanggal: new Date().toISOString().split('T')[0],
+                keterangan: "Pinjaman Baong",
+                status: "belum"
+            },
+            {
+                id: 2,
+                nama: "Obo",
+                jumlah: 200000,
+                tanggal: new Date().toISOString().split('T')[0],
+                keterangan: "Pinjaman Obo",
+                status: "belum"
+            }
+        ];
+
+        let dataHutang = JSON.parse(localStorage.getItem('dataHutangTegar')) || initialData;
+        let currentFilter = 'semua';
+
+        document.getElementById('tanggal').valueAsDate = new Date();
+
+        function simpanData() {
+            localStorage.setItem('dataHutangTegar', JSON.stringify(dataHutang));
+            renderDaftar();
+        }
+
+        function tambahHutang(e) {
+            e.preventDefault();
+            const nama = document.getElementById('nama').value;
+            const jumlah = parseInt(document.getElementById('jumlah').value);
+            const tanggal = document.getElementById('tanggal').value;
+            const keterangan = document.getElementById('keterangan').value || 'Tidak ada keterangan';
+
+            dataHutang.push({
+                id: Date.now(),
+                nama,
+                jumlah,
+                tanggal,
+                keterangan,
+                status: 'belum'
+            });
+
+            simpanData();
+            document.getElementById('hutangForm').reset();
+            document.getElementById('tanggal').valueAsDate = new Date();
+        }
+
+        function toggleStatus(id) {
+            dataHutang = dataHutang.map(item => {
+                if(item.id === id) {
+                    item.status = item.status === 'belum' ? 'lunas' : 'belum';
+                }
+                return item;
+            });
+            simpanData();
+        }
+
+        function hapusHutang(id) {
+            if(confirm('Yakin mau hapus catatan ini?')) {
+                dataHutang = dataHutang.filter(item => item.id !== id);
+                simpanData();
+            }
+        }
+
+        function filterStatus(status) {
+            currentFilter = status;
+            renderDaftar();
+        }
+
+        function tagihWA(nama, jumlah) {
+            const pesan = `Halo ${nama}, mau ngingetin soal pinjaman Rp ${jumlah.toLocaleString('id-ID')} kemarin ya. Kalau ada rezeki bisa transfer ke BCA 5310881637 a.n Tegar Saputra. Makasih ya!`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(pesan)}`, '_blank');
+        }
+
+        function renderDaftar() {
+            const container = document.getElementById('daftarHutang');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            container.innerHTML = '';
+
+            let totalBelum = 0;
+            let totalLunas = 0;
+            let orangBelum = 0;
+
+            const filtered = dataHutang.filter(item => {
+                const matchSearch = item.nama.toLowerCase().includes(search);
+                const matchFilter = currentFilter === 'semua' || item.status === currentFilter;
+                return matchSearch && matchFilter;
+            });
+
+            dataHutang.forEach(item => {
+                if(item.status === 'belum') {
+                    totalBelum += item.jumlah;
+                    orangBelum++;
+                } else {
+                    totalLunas += item.jumlah;
+                }
+            });
+
+            document.getElementById('totalBelumLunas').innerText = `Rp ${totalBelum.toLocaleString('id-ID')}`;
+            document.getElementById('totalLunas').innerText = `Rp ${totalLunas.toLocaleString('id-ID')}`;
+            document.getElementById('totalPeminjam').innerText = `${orangBelum} Orang`;
+
+            if(filtered.length === 0) {
+                container.innerHTML = `<div class="bg-slate-800 p-8 rounded-xl text-center text-slate-500 text-sm">Belum ada catatan piutang.</div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const isLunas = item.status === 'lunas';
+                const card = document.createElement('div');
+                card.className = `bg-slate-800 border ${isLunas ? 'border-slate-700/50 opacity-70' : 'border-slate-700'} p-4 rounded-xl flex flex-col md:flex-row justify-between md:items-center gap-3`;
+                
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-white">${item.nama}</h3>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold ${isLunas ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">
+                                ${isLunas ? 'LUNAS' : 'BELUM BAYAR'}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">${item.keterangan} • <span class="text-slate-500">${item.tanggal}</span></p>
+                        <p class="text-lg font-bold ${isLunas ? 'line-through text-slate-500' : 'text-emerald-400'} mt-1">
+                            Rp ${item.jumlah.toLocaleString('id-ID')}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${!isLunas ? `
+                            <button onclick="tagihWA('${item.nama}', ${item.jumlah})" class="bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 hover:bg-emerald-600 hover:text-slate-900 text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-brands fa-whatsapp"></i> Tagih
+                            </button>
+                        ` : ''}
+                        <button onclick="toggleStatus(${item.id})" class="bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 px-3 py-1.5 rounded-lg transition">
+                            ${isLunas ? 'Tandai Belum' : 'Tandai Lunas'}
+                        </button>
+                        <button onclick="hapusHutang(${item.id})" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-1.5 rounded-lg transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function toggleRekeningModal() {
+            document.getElementById('rekeningModal').classList.toggle('hidden');
+        }
+
+        function copyRekening() {
+            navigator.clipboard.writeText('5310881637');
+            alert('Nomor rekening BCA berhasil disalin!');
+        }
+
+        renderDaftar();
+    </script>
+</body>
+</html>
